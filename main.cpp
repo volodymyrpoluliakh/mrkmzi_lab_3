@@ -76,8 +76,16 @@ int main_callback(int argc, char* argv[]) {
         auto m = mpz_class(message, base);
         auto p = mpz_class(p_str, base);
         auto g = mpz_class(g_str, base);
-        auto y = mpz_class(y_str, base);
         auto x = mpz_class(x_str, base);
+
+        mpz_class y;
+
+        if (y_str.empty()) {
+            mpz_powm_sec(y.get_mpz_t(), g.get_mpz_t(), x.get_mpz_t(), p.get_mpz_t());
+        } else {
+            y = mpz_class(y_str, base);
+        }
+
 
         if (m >= p || x >= p || g >= p || y >= p) {
             std::cout << "Wrong parameters given. Aborting...";
