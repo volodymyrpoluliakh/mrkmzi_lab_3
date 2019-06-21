@@ -35,9 +35,16 @@ private:
     PrivateKey _private_key;
 };
 
+struct CipherText {
+    mpz_class a;
+    mpz_class b;
+};
+
 namespace el_gamal {
    DigitalSignature sign(const mpz_class& message, const KeyPair& key_pair);
    bool verify(const mpz_class& message, const DigitalSignature& digital_sign, const PublicKey& public_key);
+   CipherText encrypt(const mpz_class& message, const PublicKey& public_key);
+   mpz_class decrypt(const CipherText& ct, const KeyPair& key_pair);
 }
 
 

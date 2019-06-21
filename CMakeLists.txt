@@ -9,5 +9,7 @@ add_executable(${PROJECT_NAME}
     )
 
 #target_include_directories(${})
+#
+target_link_libraries(${PROJECT_NAME} gmp.a boost_program_options.a libstdc++.a)
 
-target_link_libraries(${PROJECT_NAME} gmp.a boost_program_options.a)
+

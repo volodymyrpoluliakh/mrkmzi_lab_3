@@ -133,24 +133,22 @@ DigitalSignature el_gamal::sign(const mpz_class& message, const KeyPair& key_pai
         throw std::runtime_error("Wrong message given! Message is bigger than p - 1. Unable to sign message...");
     }
 
-    mpz_class k = 31;
-
+    mpz_class k;
     gmp_randstate_t state;
     gmp_randinit_default(state);
+    gmp_randseed_ui(state, static_cast<long>(getNumOfPrt()));
+    gmp_randinit_default(state);
     mpz_class gcd = 0;
-//    while (gcd != 1) {
-//        mpz_urandomm(k.get_mpz_t(), state, p_minus_1.get_mpz_t());
-//        mpz_gcd(gcd.get_mpz_t(), p_minus_1.get_mpz_t(), k.get_mpz_t());
-//    }
+    while (gcd != 1) {
+        mpz_urandomm(k.get_mpz_t(), state, p_minus_1.get_mpz_t());
+        mpz_gcd(gcd.get_mpz_t(), p_minus_1.get_mpz_t(), k.get_mpz_t());
+    }
 
-//    std::cout << "k: " << k.get_str() << std::endl;
-//    std::cout << "g: " << key_pair.public_key().g.get_str() << std::endl;
     DigitalSignature digital_sign;
 
-    mpz_powm_sec(digital_sign.a.get_mpz_t(), key_pair.public_key().g.get_mpz_t(),
-                 k.get_mpz_t(), key_pair.public_key().p.get_mpz_t());
 
-//    std::cout << "a: " << digital_sign.a.get_str() << std::endl;
+    mpz_powm(digital_sign.a.get_mpz_t(), key_pair.public_key().g.get_mpz_t(),
+                 k.get_mpz_t(), key_pair.public_key().p.get_mpz_t());
 
     mpz_class xa = key_pair.private_key().x * digital_sign.a;
     mpz_sub(digital_sign.b.get_mpz_t(), message.get_mpz_t(), xa.get_mpz_t());
@@ -170,14 +168,50 @@ bool el_gamal::verify(const mpz_class& message, const DigitalSignature& digital_
     mpz_class g_deg_m, y_deg_a, a_deg_b, l_res;
     mpz_powm_sec(g_deg_m.get_mpz_t(), public_key.g.get_mpz_t(), message.get_mpz_t(), public_key.p.get_mpz_t());
 
-    mpz_powm_sec(y_deg_a.get_mpz_t(), public_key.y.get_mpz_t(), digital_sign.a.get_mpz_t(), public_key.p.get_mpz_t());
-    mpz_powm_sec(a_deg_b.get_mpz_t(), digital_sign.a.get_mpz_t(), digital_sign.b.get_mpz_t(), public_key.p.get_mpz_t());
+    mpz_powm(y_deg_a.get_mpz_t(), public_key.y.get_mpz_t(), digital_sign.a.get_mpz_t(), public_key.p.get_mpz_t());
+    mpz_powm(a_deg_b.get_mpz_t(), digital_sign.a.get_mpz_t(), digital_sign.b.get_mpz_t(), public_key.p.get_mpz_t());
     mpz_mul(l_res.get_mpz_t(), y_deg_a.get_mpz_t(), a_deg_b.get_mpz_t());
     mpz_mod(l_res.get_mpz_t(), l_res.get_mpz_t(), public_key.p.get_mpz_t());
 
     return l_res == g_deg_m;
 }
 
-//KeyPair generate_key_pair_by_length(uint64_t length) {
-//    KeyPair kp;
-//}
+CipherText el_gamal::encrypt(const mpz_class& message, const PublicKey& public_key) {
+    mpz_class p_minus_1 = public_key.p - 1;
+
+    if (message >= p_minus_1) {
+        throw std::runtime_error("Wrong message given! Message is bigger than p - 1. Unable to sign message...");
+    }
+
+    CipherText ct;
+    mpz_class k;
+    gmp_randstate_t state;
+    gmp_randinit_default(state);
+    gmp_randseed_ui(state, static_cast<long>(getNumOfPrt()));
+    gmp_randinit_default(state);
+    mpz_class gcd = 0;
+    while (gcd != 1) {
+        mpz_urandomm(k.get_mpz_t(), state, p_minus_1.get_mpz_t());
+        mpz_gcd(gcd.get_mpz_t(), p_minus_1.get_mpz_t(), k.get_mpz_t());
+    }
+
+    mpz_powm(ct.a.get_mpz_t(), public_key.g.get_mpz_t(),
+             k.get_mpz_t(), public_key.p.get_mpz_t());
+
+    mpz_powm(ct.b.get_mpz_t(), public_key.y.get_mpz_t(), k.get_mpz_t(), public_key.p.get_mpz_t());
+
+    ct.b *= message;
+
+    mpz_mod(ct.b.get_mpz_t(), ct.b.get_mpz_t(), public_key.p.get_mpz_t());
+
+    return ct;
+}
+
+mpz_class el_gamal::decrypt(const CipherText& ct, const KeyPair& key_pair) {
+    mpz_class message;
+    mpz_powm(message.get_mpz_t(), ct.a.get_mpz_t(), key_pair.private_key().x.get_mpz_t(), key_pair.public_key().p.get_mpz_t());
+    mpz_invert(message.get_mpz_t(), message.get_mpz_t(), key_pair.public_key().p.get_mpz_t());
+    message *= ct.b;
+    mpz_mod(message.get_mpz_t(), message.get_mpz_t(), key_pair.public_key().p.get_mpz_t());
+    return message;
+}
